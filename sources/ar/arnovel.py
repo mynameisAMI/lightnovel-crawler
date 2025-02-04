@@ -3,27 +3,26 @@ import logging
 from lncrawl.core.crawler import Crawler
 
 logger = logging.getLogger(__name__)
-search_url = "https://arnovel.me/?s=%s&post_type=wp-manga&author=&artist=&release="
-chapter_list_url = "https://arnovel.me/wp-admin/admin-ajax.php"
+search_url = "https://ar-no.com/?s=%s&post_type=wp-manga&author=&artist=&release="
+chapter_list_url = "https://ar-no.com/wp-admin/admin-ajax.php"
 
 
-class ArNovel(Crawler):
-    base_url = "https://arnovel.me/"
+class ArNoCrawler(Crawler):
+    base_url = "https://ar-no.com/"
 
     def search_novel(self, query):
         query = query.lower().replace(" ", "+")
         soup = self.get_soup(search_url % query)
 
-        # Add "title" to use alterntive name so you can search english name as search for arabic title doesn't work.
         results = []
         for tab in soup.select(".c-tabs-item__content"):
             a = tab.select_one(".post-title h3 a")
             title = tab.select_one(".mg_alternative .summary-content")
-            latest = tab.select_one(".latest-chap .chapter a").text
-            votes = tab.select_one(".rating .total_votes").text
+            latest = tab.select_one(".latest-chap .chapter a").text if tab.select_one(".latest-chap .chapter a") else "N/A"
+            votes = tab.select_one(".rating .total_votes").text if tab.select_one(".rating .total_votes") else "N/A"
             results.append(
                 {
-                    "title": title.text.strip(),
+                    "title": title.text.strip() if title else a.text.strip(),
                     "url": self.absolute_url(a["href"]),
                     "info": "%s | Rating: %s" % (latest, votes),
                 }
@@ -40,11 +39,6 @@ class ArNovel(Crawler):
             span.extract()
         self.novel_title = possible_title.text.strip()
         logger.info("Novel title: %s", self.novel_title)
-
-        # No novel covers on site.
-        # self.novel_cover = self.absolute_url(
-        #     soup.select_one('.summary_image a img')['data-src'])
-        # logger.info('Novel cover: %s', self.novel_cover)
 
         self.novel_author = " ".join(
             [
